@@ -1,0 +1,121 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(to right, #00c6ff, #0072ff);
+  color: #333;
+}
+
+header {
+  text-align: center;
+  padding: 50px 20px;
+  color: #fff;
+}
+
+h1 { font-size: 48px; margin-bottom: 10px; }
+h2 { font-size: 32px; margin-bottom: 20px; }
+
+input {
+  padding: 12px;
+  margin: 5px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+button {
+  padding: 12px 25px;
+  margin: 5px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  transition: 0.3s;
+}
+
+button:hover { opacity: 0.85; }
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.card {
+  background: #fff;
+  padding: 20px;
+  margin: 10px;
+  border-radius: 12px;
+  width: 250px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  transition: transform 0.3s;
+}
+
+.card:hover { transform: scale(1.05); }
+
+.gradient-card {
+  background: linear-gradient(270deg, #ff9966, #ff5e62);
+  color: #fff;
+  animation: gradientBG 8s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hidden { display: none; }
+
+table {
+  width: 90%;
+  margin: 20px auto;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+
+th, td {
+  border-bottom: 1px solid #eee;
+  padding: 10px;
+  text-align: center;
+}
+
+#tips-section {
+  max-width: 700px;
+  margin: 20px auto;
+  background: rgba(255,255,255,0.8);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+#tips-section ul { list-style-type: disc; padding-left: 20px; }
+
+#referral-card input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 8px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+}
+
+#referral-card button {
+  margin-top: 8px;
+  width: 100%;
+  background: #ff5e62;
+  color: #fff;
+}
+
+footer {
+  text-align: center;
+  padding: 25px;
+  background: #222;
+  color: #fff;
+  margin-top: 50px;
+}
