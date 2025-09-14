@@ -1,9 +1,4 @@
-// Import Firebase modules
-import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, increment } from "firebase/firestore";
-
-// Your Firebase config
+// Firebase setup
 const firebaseConfig = {
   apiKey: "AIzaSyDYlCL-LPbmomBnYayMVorT1V77XZS_aU8",
   authDomain: "gift-fx.firebaseapp.com",
@@ -12,11 +7,10 @@ const firebaseConfig = {
   messagingSenderId: "458627942036",
   appId: "1:458627942036:web:49823cc25cc29ffdb79681",
 };
+firebase.initializeApp(firebaseConfig);
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 // Elements
 const authSection = document.getElementById('auth-section');
@@ -39,49 +33,41 @@ const dailyChallengeEl = document.getElementById('daily-challenge');
 let currentUser = null;
 
 // Sign Up
-signupBtn.addEventListener('click', async () => {
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
-    await setupUserDoc(cred.user.uid);
-  } catch (err) {
-    alert(err.message);
-  }
+signupBtn.addEventListener('click', () => {
+  auth.createUserWithEmailAndPassword(emailInput.value, passwordInput.value)
+    .then(cred => setupUserDoc(cred.user))
+    .catch(err => alert(err.message));
 });
 
 // Login
-loginBtn.addEventListener('click', async () => {
-  try {
-    await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
-  } catch (err) {
-    alert(err.message);
-  }
+loginBtn.addEventListener('click', () => {
+  auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value)
+    .catch(err => alert(err.message));
 });
 
 // Logout
-logoutBtn.addEventListener('click', () => signOut(auth));
+logoutBtn?.addEventListener('click', () => auth.signOut());
 
 // Setup new user doc
-async function setupUserDoc(uid) {
-  await setDoc(doc(db, "users", uid), {
+function setupUserDoc(user) {
+  db.collection('users').doc(user.uid).set({
     balance: 0,
     adsWatched: 0,
-    adsWatchedToday: 0,
     referralBonus: 0,
     activity: []
-  });
-  console.log('User doc created');
+  }).then(() => console.log('User doc created'));
 }
 
 // Auth state change
-onAuthStateChanged(auth, user => {
-  if (user) {
-    currentUser = user;
+auth.onAuthStateChanged(user => {
+  if(user){
+    currentUser=user;
     authSection.classList.add('hidden');
     dashboardSection.classList.remove('hidden');
-    userEmailEl.textContent = user.email;
-    referralLinkInput.value = `${window.location.origin}?ref=${user.uid}`;
+    userEmailEl.textContent=user.email;
+    referralLinkInput.value=`${window.location.origin}?ref=${user.uid}`;
     loadUserData();
-  } else {
+  }else{
     authSection.classList.remove('hidden');
     dashboardSection.classList.add('hidden');
   }
@@ -90,51 +76,51 @@ onAuthStateChanged(auth, user => {
 // Copy referral
 copyReferralBtn.addEventListener('click', () => {
   referralLinkInput.select();
-  referralLinkInput.setSelectionRange(0, 99999);
+  referralLinkInput.setSelectionRange(0,99999);
   document.execCommand('copy');
   alert('Referral link copied!');
 });
 
 // Load user data
-async function loadUserData() {
-  const docRef = doc(db, "users", currentUser.uid);
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    const data = docSnap.data();
-    balanceEl.textContent = `$${data.balance.toFixed(2)}`;
-    adsWatchedEl.textContent = data.adsWatched;
-    referralBonusEl.textContent = `$${data.referralBonus.toFixed(2)}`;
-    const remaining = Math.max(5 - (data.adsWatchedToday || 0), 0);
-    dailyChallengeEl.textContent = remaining > 0 ?
-      `Watch ${remaining} more ads today to earn bonus $0.25!` :
-      `Daily challenge completed! 🎉`;
-    updateActivityTable(data.activity || []);
-  }
+function loadUserData(){
+  db.collection('users').doc(currentUser.uid).get().then(doc=>{
+    if(doc.exists){
+      const data=doc.data();
+      balanceEl.textContent=`$${data.balance.toFixed(2)}`;
+      adsWatchedEl.textContent=data.adsWatched;
+      referralBonusEl.textContent=`$${data.referralBonus.toFixed(2)}`;
+      dailyChallengeEl.textContent=`Watch 5 ads today for $0.25 bonus!`;
+      updateActivityTable(data.activity);
+    }
+  });
 }
 
 // Update activity table
-function updateActivityTable(activity) {
-  activityBody.innerHTML = '';
-  if (!activity.length) {
-    activityBody.innerHTML = '<tr><td colspan="2">No activity yet. Start watching ads!</td></tr>';
+function updateActivityTable(activity){
+  activityBody.innerHTML='';
+  if(!activity.length){
+    activityBody.innerHTML='<tr><td colspan="2">No activity yet. Start watching ads!</td></tr>';
     return;
   }
-  activity.forEach(item => {
-    const row = `<tr><td>${item.time}</td><td>${item.earned.toFixed(2)}</td></tr>`;
-    activityBody.innerHTML += row;
+  activity.forEach(item=>{
+    const row=`<tr><td>${item.time}</td><td>${item.earned.toFixed(2)}</td></tr>`;
+    activityBody.innerHTML+=row;
   });
 }
 
 // Handle ad complete
-adVideo.addEventListener('ended', async () => {
-  const earned = 0.05;
-  const now = new Date().toLocaleString();
-  const userRef = doc(db, "users", currentUser.uid);
-  await updateDoc(userRef, {
-    balance: increment(earned),
-    adsWatched: increment(1),
-    adsWatchedToday: increment(1),
-    activity: arrayUnion({ time: now, earned })
-  });
-  loadUserData();
+adVideo?.addEventListener('ended',()=>{
+  const earned=0.05;
+  const now=new Date().toLocaleString();
+  const userRef=db.collection('users').doc(currentUser.uid);
+  userRef.update({
+    balance:firebase.firestore.FieldValue.increment(earned),
+    adsWatched:firebase.firestore.FieldValue.increment(1),
+    activity:firebase.firestore.FieldValue.arrayUnion({time:now,earned})
+  }).then(loadUserData());
+});
+
+// Simulate watch ad button
+document.getElementById('watch-ad-btn')?.addEventListener('click',()=>{
+  adVideo.dispatchEvent(new Event('ended'));
 });
