@@ -1,16 +1,22 @@
-// Firebase setup
-const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_FIREBASE_DOMAIN",
-  projectId: "YOUR_FIREBASE_PROJECT_ID",
-  storageBucket: "YOUR_FIREBASE_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-};
-firebase.initializeApp(firebaseConfig);
+// Import Firebase modules
+import { initializeApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, increment } from "firebase/firestore";
 
-const auth = firebase.auth();
-const db = firebase.firestore();
+// Your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyDYlCL-LPbmomBnYayMVorT1V77XZS_aU8",
+  authDomain: "gift-fx.firebaseapp.com",
+  projectId: "gift-fx",
+  storageBucket: "gift-fx.firebasestorage.app",
+  messagingSenderId: "458627942036",
+  appId: "1:458627942036:web:49823cc25cc29ffdb79681",
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 // Elements
 const authSection = document.getElementById('auth-section');
@@ -31,37 +37,43 @@ const referralBonusEl = document.getElementById('referral-bonus');
 const dailyChallengeEl = document.getElementById('daily-challenge');
 
 let currentUser = null;
-let referralBonus = 0;
 
 // Sign Up
-signupBtn.addEventListener('click', () => {
-  auth.createUserWithEmailAndPassword(emailInput.value, passwordInput.value)
-    .then(cred => setupUserDoc(cred.user))
-    .catch(err => alert(err.message));
+signupBtn.addEventListener('click', async () => {
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+    await setupUserDoc(cred.user.uid);
+  } catch (err) {
+    alert(err.message);
+  }
 });
 
 // Login
-loginBtn.addEventListener('click', () => {
-  auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value)
-    .catch(err => alert(err.message));
+loginBtn.addEventListener('click', async () => {
+  try {
+    await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+  } catch (err) {
+    alert(err.message);
+  }
 });
 
 // Logout
-logoutBtn.addEventListener('click', () => auth.signOut());
+logoutBtn.addEventListener('click', () => signOut(auth));
 
 // Setup new user doc
-function setupUserDoc(user) {
-  db.collection('users').doc(user.uid).set({
+async function setupUserDoc(uid) {
+  await setDoc(doc(db, "users", uid), {
     balance: 0,
     adsWatched: 0,
     adsWatchedToday: 0,
     referralBonus: 0,
     activity: []
-  }).then(() => console.log('User doc created'));
+  });
+  console.log('User doc created');
 }
 
 // Auth state change
-auth.onAuthStateChanged(user => {
+onAuthStateChanged(auth, user => {
   if (user) {
     currentUser = user;
     authSection.classList.add('hidden');
@@ -84,24 +96,20 @@ copyReferralBtn.addEventListener('click', () => {
 });
 
 // Load user data
-function loadUserData() {
-  db.collection('users').doc(currentUser.uid).get().then(doc => {
-    if (doc.exists) {
-      const data = doc.data();
-      balanceEl.textContent = `$${data.balance.toFixed(2)}`;
-      adsWatchedEl.textContent = data.adsWatched;
-      referralBonus = data.referralBonus || 0;
-      referralBonusEl.textContent = `$${referralBonus.toFixed(2)}`;
-
-      // Daily challenge: Watch 5 ads
-      const remaining = Math.max(5 - data.adsWatchedToday, 0);
-      dailyChallengeEl.textContent = remaining > 0 ?
-        `Watch ${remaining} more ads today to earn bonus $0.25!` :
-        `Daily challenge completed! 🎉`;
-
-      updateActivityTable(data.activity);
-    }
-  });
+async function loadUserData() {
+  const docRef = doc(db, "users", currentUser.uid);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    const data = docSnap.data();
+    balanceEl.textContent = `$${data.balance.toFixed(2)}`;
+    adsWatchedEl.textContent = data.adsWatched;
+    referralBonusEl.textContent = `$${data.referralBonus.toFixed(2)}`;
+    const remaining = Math.max(5 - (data.adsWatchedToday || 0), 0);
+    dailyChallengeEl.textContent = remaining > 0 ?
+      `Watch ${remaining} more ads today to earn bonus $0.25!` :
+      `Daily challenge completed! 🎉`;
+    updateActivityTable(data.activity || []);
+  }
 }
 
 // Update activity table
@@ -118,14 +126,15 @@ function updateActivityTable(activity) {
 }
 
 // Handle ad complete
-adVideo.addEventListener('ended', () => {
+adVideo.addEventListener('ended', async () => {
   const earned = 0.05;
   const now = new Date().toLocaleString();
-  const userRef = db.collection('users').doc(currentUser.uid);
-  userRef.update({
-    balance: firebase.firestore.FieldValue.increment(earned),
-    adsWatched: firebase.firestore.FieldValue.increment(1),
-    adsWatchedToday: firebase.firestore.FieldValue.increment(1),
-    activity: firebase.firestore.FieldValue.arrayUnion({ time: now, earned })
-  }).then(loadUserData());
+  const userRef = doc(db, "users", currentUser.uid);
+  await updateDoc(userRef, {
+    balance: increment(earned),
+    adsWatched: increment(1),
+    adsWatchedToday: increment(1),
+    activity: arrayUnion({ time: now, earned })
+  });
+  loadUserData();
 });
